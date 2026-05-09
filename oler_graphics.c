@@ -20,6 +20,30 @@ typedef struct {
 	oler_Color *pixels;
 } oler_Bitmap;
 
+float oler_distance_from_point_to_line(float x_start, float y_start, float x_end, float y_end, float x_point, float y_point) {
+	float denom = fabsf((y_end - y_start)*x_point - (x_end - x_start)*y_point + x_end*y_start - y_end*x_start);
+	float numer = sqrtf((y_end - y_start)*(y_end - y_start) + (x_end - x_start)*(x_end - x_start));
+	return denom/numer;
+}
+
+float oler_point_distance(float x1, float y1, float x2, float y2) {
+	return sqrtf((x2 - x1)*(x2 - x1) + (y2 - y1)*(y2 - y1));
+}
+
+float oler_point_project_to_line_segment(float x_start, float y_start, float x_end, float y_end, float x_point, float y_point) { // returns a number from 0 to 1
+	float apx = x_point - x_start;
+	float apy = y_point - y_start;
+
+	float t = (apx * (x_end - x_start) + apy * (y_end - y_start))/((x_end - x_start)*(x_end - x_start) + (y_end - y_start)*(y_end - y_start));
+	if (t < 0) {
+		t = 0;
+	}
+	if (t > 1) {
+		t = 1;
+	}
+	return t;
+}
+
 size_t oler_load_ppm(const char *filepath, oler_Bitmap *bitmap) {
 	FILE *file = fopen(filepath, "rb");
 	size_t res = 0xCE;
@@ -203,7 +227,8 @@ void oler_line(oler_Bitmap bitmap, float x_start, float y_start, float x_end, fl
 			if (x_int >= bitmap.width) {
 				return;
 			}
-			bitmap.pixels[x_int + (int)roundf(y)*bitmap.width] = color; }
+			bitmap.pixels[x_int + (int)roundf(y)*bitmap.width] = color;
+	       	}
 	} else {
 		float slope = (y_end - y_start)/(x_end - x_start);
 		for (float x = x_start; x < x_end; x++) {
@@ -231,45 +256,35 @@ void oler_line_width(oler_Bitmap bitmap, float x_start, float y_start, float x_e
 		y_start = y_end;
 		y_end = temp;
 	}
-	if (y_end - y_start > x_end - x_start) {
-		for (float y_offset = -width/2; y_offset < width/2; y_offset += 1.) {
-			oler_line(bitmap, x_start, y_start + y_offset, x_end, y_end + y_offset, color);
+	float x_left = x_start - width;
+	float x_right = x_end + width;
+	float y_top = y_start - width;
+	float y_bottom = y_end + width;
+
+	for (int y = floorf(y_top); y < ceilf(y_bottom); y++) {
+		if (y < 0) {
+			continue;
 		}
-	} else {
-		for (float x_offset = -width/2; x_offset < width/2; x_offset += 1.) {
-			oler_line(bitmap, x_start + x_offset, y_start, x_end + x_offset, y_end, color);
+		if (y >= bitmap.height) {
+			break;
+		}
+		for (int x = floorf(x_left); x < ceilf(x_right); x++) {
+			if (x < 0) {
+				continue;
+			}
+			if (x >= bitmap.width) {
+				break;
+			}
+			float t = oler_point_project_to_line_segment(x_start, y_start, x_end, y_end, x + 0.5, y + 0.5);
+			float x_proj = x_start + t * (x_end - x_start);
+			float y_proj = y_start + t * (y_end - y_start);
+			float distance = oler_point_distance(x + 0.5, y + 0.5, x_proj, y_proj);
+			if (distance < width) {
+				bitmap.pixels[x + y*bitmap.width] = color;
+			}
 		}
 	}
 }
-
-void oler_line_width2(oler_Bitmap bitmap, float x_start, float y_start, float x_end, float y_end, float width, oler_Color color) {
-	if (x_start > x_end) {
-		float temp = x_start;
-		x_start = x_end;
-		x_end = temp;
-	}
-	if (y_start > y_end) {
-		float temp = y_start;
-		y_start = y_end;
-		y_end = temp;
-	}
-	if (y_end - y_start > x_end - x_start) {
-		float slope = -(y_end - y_start)/(x_end - x_start);
-		float x_offset_start = (width/2)/sqrtf(slope*slope + 1);
-		for (float x_offset = -x_offset_start; x_offset <= x_offset_start; x_offset += 0.5) {
-			float y_offset = slope * x_offset;
-			oler_line(bitmap, x_start + x_offset, y_start + y_offset, x_end + x_offset, y_end + y_offset, color);
-		}
-	} else {
-		float slope = -(x_end - x_start)/(float)(y_end - y_start);
-		float y_offset_start = (width/2)/sqrtf(slope*slope + 1);
-		for (float y_offset = -y_offset_start; y_offset <= y_offset_start; y_offset += 0.5) {
-			float x_offset = slope * y_offset;
-			oler_line(bitmap, x_start + x_offset, y_start + y_offset, x_end + x_offset, y_end + y_offset, color);
-		}
-	}
-}
-
 
 void oler_rect(oler_Bitmap bitmap, int x_left, int y_top, int width, int height, oler_Color color) {
 	for (int y = y_top; y < y_top + height; y++) {

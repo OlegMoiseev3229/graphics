@@ -12,8 +12,8 @@ int main() {
 
 	//oler_line(bitmap, 10, 10, 20, 50, (oler_Color) 0x00FFF7FFu);
 
-	oler_line_width2(bitmap, 50, 20, 99, 99, 10., (oler_Color) 0x00FFF7FFu);
-	oler_line_width2(bitmap, 20, 50, 100, 100, 10., (oler_Color) 0x00FFF7FFu);
+	oler_line_width(bitmap, 50, 20, 99, 99, 5., (oler_Color) 0x00FFF7FFu);
+	oler_line_width(bitmap, 20, 50, 100, 100, 5., (oler_Color) 0x00FFF7FFu);
 
 	//oler_line_width(bitmap, 80, 50, 130, 130, 5.5, (oler_Color) 0x00FFF7FFu);
 
